@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const  encrypt = require("mongoose-encryption");
 
 const app = express();
 
@@ -12,10 +13,13 @@ app.use(bodyParser.urlencoded({ extended: true }));
 mongoose.set('strictQuery', false);
 mongoose.connect("mongodb://127.0.0.1:27017/userDB");
 
-const userSchema = {
+const userSchema = new mongoose.Schema({
     email: String,
     password: String
-};
+});
+
+const secret = "SomeRandomString";
+userSchema.plugin(encrypt, {secret: secret, encryptedFields: ["password"]}); // This encryption line of code must be written before mongoose model is created.
 
 const User = new mongoose.model("User", userSchema);
 
