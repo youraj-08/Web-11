@@ -1,3 +1,4 @@
+require("dotenv").config(); 
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
@@ -18,8 +19,8 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
-const secret = "SomeRandomString";
-userSchema.plugin(encrypt, {secret: secret, encryptedFields: ["password"]}); // This encryption line of code must be written before mongoose model is created.
+
+userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"]}); // This encryption line of code must be written before mongoose model is created.
 
 const User = new mongoose.model("User", userSchema);
 
