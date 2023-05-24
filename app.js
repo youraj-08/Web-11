@@ -8,7 +8,7 @@ const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const findOrCreate = require("mongoose-findorcreate");
-
+const FacebookStrategy = require('passport-facebook').Strategy;
 
 const app = express();
 
@@ -25,15 +25,18 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose.connect("mongodb://127.0.0.1:27017/userDB");
-mongoose.set('strictQuery', false);
+mongoose.set("strictQuery", false);
+mongoose.connect(process.env.MONGO_URL);
+
 
 
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
     googleId: String,
-    secret: String
+    secret: String,
+    accountId: String,
+    name: String
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -68,9 +71,17 @@ passport.use(new GoogleStrategy({
 
 
 
-app.get("/", function (req, res) {
-    res.render("home");
-});
+passport.use(new FacebookStrategy({
+    clientID: process.env.CLIENT_FB,
+    clientSecret: process.env.CLIENT_FB_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets",
+},
+    function (accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({ accountId: profile.id, username: profile.displayName }, function (err, user) {
+            return cb(err, user);
+        });
+    }));
+
 
 app.get("/auth/google",
     passport.authenticate("google", { scope: ["profile"] })
@@ -81,6 +92,20 @@ app.get("/auth/google/secrets",
     function (req, res) {
         res.redirect("/secrets");
     });
+
+
+app.get("/auth/facebook",
+    passport.authenticate("facebook"));
+
+app.get("/auth/facebook/secrets",
+    passport.authenticate("facebook", { failureRedirect: "/login" }),
+    function (req, res) {
+        res.redirect("/secrets");
+    });
+
+app.get("/", function (req, res) {
+    res.render("home");
+});
 
 app.get("/login", function (req, res) {
     res.render("login");
@@ -175,23 +200,72 @@ app.post("/login", async (req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 app.listen(3000, function () {
     console.log("Server started at port 3000");
 })
+
+
+
+
+
+
+// passport.use(
+//     new FacebookStrategy(
+//       {
+//         clientID: process.env.CLIENT_FB,
+//     clientSecret: process.env.CLIENT_FB_SECRET,
+//     callbackURL: "http://localhost:3000/auth/facebook/secrets"
+//       },
+//       async function (accessToken, refreshToken, profile, cb) {
+//         const user = await User.findOne({
+//           accountId: profile.id,
+//         });
+//         if (!user) {
+//           console.log('Adding new facebook user to DB..');
+//           const user = new User({
+//             accountId: profile.id,
+//             name: profile.displayName
+//           });
+//           await user.save();
+//           // console.log(user);
+//           return cb(null, profile);
+//         } else {
+//           console.log('Facebook User already exist in DB..');
+//           // console.log(profile);
+//           return cb(null, profile);
+//         }
+//       }
+//     )
+//   );
+
+//   app.get('/auth/facebook', passport.authenticate('facebook'));
+
+//   app.get(
+//     '/auth/facebook/secrets',
+//     passport.authenticate('facebook', {
+//       failureRedirect: '/login',
+//     }),
+//     function (req, res) {
+//       // Successful authentication, redirect to success screen.
+//       res.redirect('/secrets');
+//     }
+//   );
+
+
+
+// passport.use(new FacebookStrategy({
+//     clientID: process.env.CLIENT_FB,
+//     clientSecret: process.env.CLIENT_FB_SECRET,
+//     callbackURL: "http://localhost:3000/auth/facebook/secrets",
+//     profileFields: ['id', 'displayName', 'email']
+// }, async function (accessToken, refreshToken, profile, cb) {
+//     try {
+//         // Your search logic or user creation
+//         User.findOrCreate({ username: profile.displayName, facebookId: profile.id }, function (err, user) {
+//             return cb(err, user);
+//         });
+//     } catch (error) {
+//         console.log(error);
+//     }
+// }
+// ));
